@@ -5,6 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>CalcFrete</title>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <style>
   :root{
     --bg:#0d0f14;--surface:#161a22;--surface2:#1e2430;--border:#2a3040;
@@ -17,7 +19,6 @@
     radial-gradient(ellipse 40% 50% at 10% 80%,rgba(232,99,10,.05) 0%,transparent 60%);}
   .container{width:100%;max-width:700px;}
 
-  /* HEADER */
   .header{margin-bottom:32px;}
   .header-tag{font-size:11px;font-weight:600;letter-spacing:3px;text-transform:uppercase;color:var(--accent);margin-bottom:8px;}
   .header h1{font-family:'Bebas Neue',sans-serif;font-size:clamp(42px,8vw,72px);line-height:.9;letter-spacing:1px;}
@@ -25,7 +26,6 @@
   .header p{margin-top:14px;color:var(--muted);font-size:14px;line-height:1.6;}
   .free-badge{display:inline-flex;align-items:center;gap:6px;background:rgba(46,204,113,.1);border:1px solid rgba(46,204,113,.25);border-radius:6px;padding:4px 10px;font-size:11px;font-weight:600;color:#2ecc71;margin-top:10px;letter-spacing:.5px;}
 
-  /* CARDS */
   .card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:24px;margin-bottom:14px;}
   .card-title{font-size:11px;font-weight:600;letter-spacing:2.5px;text-transform:uppercase;color:var(--muted);margin-bottom:20px;display:flex;align-items:center;gap:8px;}
   .card-title::after{content:'';flex:1;height:1px;background:var(--border);}
@@ -38,28 +38,44 @@
   .stop-dot.origem{background:var(--accent);}
   .stop-dot.destino{background:var(--accent2);border-color:var(--accent2);}
   .stop-connector{width:2px;flex:1;min-height:14px;background:repeating-linear-gradient(to bottom,var(--border) 0,var(--border) 6px,transparent 6px,transparent 12px);}
-  .stop-input-wrap{flex:1;padding:8px 0;}
+  .stop-input-wrap{flex:1;padding:8px 0;min-width:0;}
   .stop-label{font-size:10px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:4px;}
   .stop-input-row{display:flex;gap:8px;align-items:center;}
-  input[type="text"],input[type="number"]{background:var(--surface2);border:1.5px solid var(--border);border-radius:10px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:15px;height:48px;padding:0 14px;transition:border-color .2s,box-shadow .2s;outline:none;width:100%;}
-  input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(245,166,35,.12);}
-  input::placeholder{color:var(--muted);opacity:.5;}
+
+  /* AUTOCOMPLETE */
+  .autocomplete-wrap{position:relative;flex:1;min-width:0;}
+  .autocomplete-wrap input{background:var(--surface2);border:1.5px solid var(--border);border-radius:10px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:15px;height:48px;padding:0 40px 0 14px;transition:border-color .2s,box-shadow .2s;outline:none;width:100%;}
+  .autocomplete-wrap input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(245,166,35,.12);}
+  .autocomplete-wrap input::placeholder{color:var(--muted);opacity:.5;}
+  .ac-spinner{position:absolute;right:12px;top:50%;transform:translateY(-50%);width:16px;height:16px;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .6s linear infinite;display:none;}
+  .ac-spinner.show{display:block;}
+  @keyframes spin{to{transform:translateY(-50%) rotate(360deg)}}
+  .ac-check{position:absolute;right:12px;top:50%;transform:translateY(-50%);color:#2ecc71;font-size:16px;display:none;}
+  .ac-check.show{display:block;}
+  .ac-dropdown{position:absolute;top:calc(100% + 4px);left:0;right:0;background:var(--surface);border:1.5px solid var(--border);border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.4);z-index:9999;overflow:hidden;display:none;}
+  .ac-dropdown.show{display:block;}
+  .ac-item{padding:11px 14px;font-size:13px;cursor:pointer;transition:background .15s;color:var(--text);border-bottom:1px solid var(--border);}
+  .ac-item:last-child{border-bottom:none;}
+  .ac-item:hover,.ac-item.active{background:rgba(245,166,35,.08);}
+  .ac-item-main{font-weight:500;}
+  .ac-item-sub{font-size:11px;color:var(--muted);margin-top:1px;}
+  .ac-empty{padding:12px 14px;font-size:13px;color:var(--muted);text-align:center;}
+
+  input[type="number"]{background:var(--surface2);border:1.5px solid var(--border);border-radius:10px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:15px;height:48px;padding:0 52px 0 14px;transition:border-color .2s,box-shadow .2s;outline:none;width:100%;}
+  input[type="number"]:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(245,166,35,.12);}
+  input[type="number"]::placeholder{color:var(--muted);opacity:.5;}
   input[type="number"]::-webkit-inner-spin-button{-webkit-appearance:none;}
   .btn-remove{width:40px;height:40px;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--muted);font-size:16px;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;transition:all .15s;}
   .btn-remove:hover{border-color:var(--danger);color:var(--danger);background:rgba(231,76,60,.08);}
   .btn-add-stop{display:flex;align-items:center;gap:8px;background:transparent;border:1.5px dashed var(--border);border-radius:10px;color:var(--muted);font-family:'DM Sans',sans-serif;font-size:13px;font-weight:500;padding:10px 16px;cursor:pointer;transition:all .2s;margin-top:6px;margin-left:44px;width:calc(100% - 44px);}
   .btn-add-stop:hover{border-color:var(--accent);color:var(--accent);}
 
-  /* VALORES */
-  .values-row{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
   .values-row-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;}
   .field{display:flex;flex-direction:column;gap:6px;}
   label{font-size:12px;font-weight:500;color:var(--muted);letter-spacing:.5px;}
   .input-group{position:relative;}
-  .input-group input{padding-right:52px;}
   .input-unit{position:absolute;right:14px;top:50%;transform:translateY(-50%);font-size:12px;font-weight:600;color:var(--muted);pointer-events:none;}
 
-  /* BOTAO */
   .btn-calcular{width:100%;height:56px;background:linear-gradient(135deg,var(--accent),var(--accent2));border:none;border-radius:12px;color:#0d0f14;font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:2px;cursor:pointer;transition:transform .15s,box-shadow .15s;box-shadow:0 4px 20px rgba(245,166,35,.25);}
   .btn-calcular:hover{transform:translateY(-1px);box-shadow:0 6px 28px rgba(245,166,35,.35);}
   .btn-calcular:disabled{opacity:.5;cursor:not-allowed;transform:none;}
@@ -67,7 +83,7 @@
   /* ROTAS */
   .routes-section{display:none;}
   .routes-section.show{display:block;animation:fadeUp .35s ease;}
-  .route-option{border:1.5px solid var(--border);border-radius:12px;padding:16px 18px;margin-bottom:10px;cursor:pointer;transition:all .2s;background:var(--surface2);display:flex;align-items:center;gap:14px;}
+  .route-option{border:1.5px solid var(--border);border-radius:12px;padding:14px 16px;margin-bottom:10px;cursor:pointer;transition:all .2s;background:var(--surface2);display:flex;align-items:center;gap:14px;}
   .route-option:hover{border-color:rgba(245,166,35,.5);}
   .route-option.selected{border-color:var(--accent);background:rgba(245,166,35,.08);box-shadow:0 0 0 3px rgba(245,166,35,.1);}
   .route-radio{width:20px;height:20px;border-radius:50%;border:2px solid var(--border);display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .2s;}
@@ -75,16 +91,21 @@
   .route-radio-dot{width:10px;height:10px;border-radius:50%;background:var(--accent);display:none;}
   .route-option.selected .route-radio-dot{display:block;}
   .route-info{flex:1;min-width:0;}
-  .route-name{font-size:14px;font-weight:600;color:var(--text);margin-bottom:3px;}
+  .route-name{font-size:14px;font-weight:600;color:var(--text);margin-bottom:2px;}
   .route-via{font-size:12px;color:var(--muted);}
-  .route-km-badge{font-family:'Bebas Neue',sans-serif;font-size:24px;color:var(--accent);letter-spacing:1px;white-space:nowrap;flex-shrink:0;}
+  .route-right{text-align:right;flex-shrink:0;}
+  .route-km-badge{font-family:'Bebas Neue',sans-serif;font-size:24px;color:#2ecc71;letter-spacing:1px;}
   .route-km-badge small{font-family:'DM Sans',sans-serif;font-size:11px;color:var(--muted);font-weight:400;}
-  .route-km-badge.real{color:#2ecc71;}
   .km-source{font-size:10px;color:#2ecc71;font-weight:600;letter-spacing:1px;text-transform:uppercase;margin-top:2px;}
-
   .btn-usar-rota{width:100%;height:48px;background:rgba(245,166,35,.12);border:1.5px solid var(--accent);border-radius:10px;color:var(--accent);font-family:'DM Sans',sans-serif;font-size:14px;font-weight:600;cursor:pointer;transition:all .2s;margin-top:4px;display:none;}
   .btn-usar-rota.show{display:block;}
   .btn-usar-rota:hover{background:rgba(245,166,35,.2);}
+
+  /* MAPA */
+  .map-card{display:none;}
+  .map-card.show{display:block;animation:fadeUp .4s ease;}
+  #map{width:100%;height:380px;border-radius:12px;overflow:hidden;border:1px solid var(--border);}
+  .leaflet-container{background:#1a1f2e !important;}
 
   /* RESULTADOS */
   .results{display:none;}
@@ -106,17 +127,16 @@
   .divider{height:1px;background:var(--border);margin:14px 0;}
   .results-grid-top{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:12px;}
   .results-grid-bot{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:14px;}
+  .info-box{background:rgba(245,166,35,.06);border:1px solid rgba(245,166,35,.2);border-radius:10px;padding:12px 16px;font-size:13px;color:var(--muted);margin-bottom:16px;}
 
-  /* MISC */
   .error-msg{background:rgba(231,76,60,.1);border:1px solid rgba(231,76,60,.3);border-radius:10px;padding:12px 16px;font-size:13px;color:#f08080;display:none;margin-top:12px;}
   .error-msg.show{display:block;}
-  .info-box{background:rgba(245,166,35,.06);border:1px solid rgba(245,166,35,.2);border-radius:10px;padding:12px 16px;font-size:13px;color:var(--muted);margin-bottom:0;}
   .loading-dots{display:inline-flex;gap:4px;align-items:center;}
   .loading-dots span{width:6px;height:6px;background:#0d0f14;border-radius:50%;animation:bounce .8s infinite;}
   .loading-dots span:nth-child(2){animation-delay:.15s;}
   .loading-dots span:nth-child(3){animation-delay:.3s;}
   @keyframes bounce{0%,100%{transform:translateY(0);opacity:.6}50%{transform:translateY(-4px);opacity:1}}
-  @media(max-width:540px){.values-row,.values-row-3{grid-template-columns:1fr;}.results-grid-top,.results-grid-bot{grid-template-columns:1fr;}.btn-add-stop{margin-left:0;width:100%;}}
+  @media(max-width:540px){.values-row-3{grid-template-columns:1fr;}.results-grid-top,.results-grid-bot{grid-template-columns:1fr;}.btn-add-stop{margin-left:0;width:100%;}}
 </style>
 </head>
 <body>
@@ -125,7 +145,7 @@
   <div class="header">
     <div class="header-tag">🚛 Transportadora</div>
     <h1>CALC<span>FRETE</span></h1>
-    <p>Distância real via OpenStreetMap · Pedágio manual · Ganho por KM rodado.</p>
+    <p>Distância real · Mapa da rota · Pedágio manual · Ganho por KM rodado.</p>
     <span class="free-badge">✅ 100% Gratuito — sem API Key</span>
   </div>
 
@@ -143,21 +163,21 @@
       <div class="field">
         <label>Valor do Frete (R$)</label>
         <div class="input-group">
-          <input type="number" id="valorFrete" placeholder="0,00" min="0" step="0.01" />
+          <input type="number" id="valorFrete" placeholder="0,00" min="0" step="0.01"/>
           <span class="input-unit">R$</span>
         </div>
       </div>
       <div class="field">
         <label>Peso da Carga</label>
         <div class="input-group">
-          <input type="number" id="peso" placeholder="0,0" min="0" step="0.1" />
+          <input type="number" id="peso" placeholder="0,0" min="0" step="0.1"/>
           <span class="input-unit">TON</span>
         </div>
       </div>
       <div class="field">
         <label>Pedágios (R$)</label>
         <div class="input-group">
-          <input type="number" id="pedagio" placeholder="0,00" min="0" step="0.01" />
+          <input type="number" id="pedagio" placeholder="0,00" min="0" step="0.01"/>
           <span class="input-unit">R$</span>
         </div>
       </div>
@@ -170,18 +190,21 @@
   <!-- OPÇÕES DE ROTA -->
   <div class="routes-section card" id="routesSection" style="margin-top:14px;">
     <div class="card-title">🗺️ Escolha a Rota</div>
-    <div class="info-box" style="margin-bottom:16px;">
-      🛰️ Distâncias calculadas em tempo real via <strong style="color:var(--text)">OpenStreetMap</strong> — 100% gratuito e preciso.
-    </div>
+    <div class="info-box">🛰️ Distâncias calculadas via <strong style="color:var(--text)">OpenStreetMap</strong> — 100% gratuito e preciso.</div>
     <div id="routesList"></div>
     <button class="btn-usar-rota" id="btnUsarRota" onclick="calcularComRota()">✓ CALCULAR COM ESTA ROTA</button>
+  </div>
+
+  <!-- MAPA -->
+  <div class="map-card card" id="mapCard" style="margin-top:14px;">
+    <div class="card-title">🗺️ Mapa da Rota</div>
+    <div id="map"></div>
   </div>
 
   <!-- RESULTADO -->
   <div class="results card" id="results" style="margin-top:14px;">
     <div class="card-title">📊 Resultado</div>
     <div class="route-badge" id="routeBadge"></div>
-
     <div class="results-grid-top">
       <div class="result-card success">
         <div class="result-label">Distância Real</div>
@@ -199,9 +222,7 @@
         <div class="result-sub">valor informado</div>
       </div>
     </div>
-
     <div class="divider"></div>
-
     <div class="results-grid-bot">
       <div class="result-card success">
         <div class="result-label">Valor Líquido</div>
@@ -223,14 +244,18 @@
 
 </div>
 <script>
-// ── ESTADO ─────────────────────────────────────────────
-let selectedRouteKm = null, selectedRouteName = null, stopCounter = 0;
+// ── ESTADO ──────────────────────────────────────────────
+let selectedRouteKm = null, selectedRouteName = null, selectedRouteGeom = null;
+let stopCounter = 0;
+let map = null, routeLayer = null;
 const stops = [
-  { id:'origem',  label:'Origem (Coleta)',   placeholder:'Ex: Coronel Freitas, SC', type:'origem',  value:'' },
-  { id:'destino', label:'Destino (Entrega)', placeholder:'Ex: Paranaguá, PR',       type:'destino', value:'' }
+  { id:'origem',  label:'Origem (Coleta)',   placeholder:'Ex: Coronel Freitas, SC', type:'origem',  value:'', coords:null },
+  { id:'destino', label:'Destino (Entrega)', placeholder:'Ex: Paranaguá, PR',       type:'destino', value:'', coords:null }
 ];
+// guarda geometrias das rotas retornadas
+let routeGeometries = [];
 
-// ── ROTA BUILDER ────────────────────────────────────────
+// ── ROTA BUILDER ─────────────────────────────────────────
 function renderRoute(){
   const b = document.getElementById('routeBuilder');
   b.innerHTML = '';
@@ -246,172 +271,289 @@ function renderRoute(){
       <div class="stop-input-wrap">
         <div class="stop-label">${stop.label}</div>
         <div class="stop-input-row">
-          <input type="text" id="inp_${stop.id}" placeholder="${stop.placeholder}" value="${stop.value}" />
-          ${stop.type==='parada' ? `<button class="btn-remove" onclick="removeStop(${i})">✕</button>` : ''}
+          <div class="autocomplete-wrap" id="acwrap_${stop.id}">
+            <input type="text" id="inp_${stop.id}" placeholder="${stop.placeholder}" value="${stop.value}" autocomplete="off"
+              oninput="onACInput(event,'${stop.id}',${i})"
+              onkeydown="onACKey(event,'${stop.id}')"
+              onblur="onACBlur('${stop.id}')"/>
+            <div class="ac-spinner" id="spin_${stop.id}"></div>
+            <div class="ac-check" id="check_${stop.id}">${stop.coords?'✓':''}</div>
+            <div class="ac-dropdown" id="drop_${stop.id}"></div>
+          </div>
+          ${stop.type==='parada'?`<button class="btn-remove" onmousedown="event.preventDefault()" onclick="removeStop(${i})">✕</button>`:''}
         </div>
       </div>`;
     b.appendChild(row);
+    if(stop.coords){ const ck=document.getElementById(`check_${stop.id}`); if(ck) ck.classList.add('show'); }
     row.querySelector('input').addEventListener('input', e => { stops[i].value = e.target.value; });
   });
 }
 
 function addStop(){
   stopCounter++;
-  stops.splice(stops.length-1, 0, { id:`p${stopCounter}`, label:`Parada ${stopCounter}`, placeholder:'Ex: Curitiba, PR', type:'parada', value:'' });
+  stops.splice(stops.length-1,0,{id:`p${stopCounter}`,label:`Parada ${stopCounter}`,placeholder:'Ex: Curitiba, PR',type:'parada',value:'',coords:null});
   relabel(); renderRoute();
 }
 function removeStop(idx){ stops.splice(idx,1); relabel(); renderRoute(); }
 function relabel(){ let p=0; stops.forEach(s=>{ if(s.type==='parada') s.label=`Parada ${++p}`; }); }
-function syncVals(){ stops.forEach(s=>{ const e=document.getElementById(`inp_${s.id}`); if(e) s.value=e.value.trim(); }); }
 
-// ── HELPERS ─────────────────────────────────────────────
-function showError(m){ const e=document.getElementById('errorMsg'); e.textContent=m; e.classList.add('show'); }
-function hideError(){ document.getElementById('errorMsg').classList.remove('show'); }
-function fmt(v){ return v.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}); }
+// ── AUTOCOMPLETE ─────────────────────────────────────────
+const acTimers={}, acCache={};
+
+async function onACInput(e,id,idx){
+  const val=e.target.value;
+  stops[idx].value=val; stops[idx].coords=null;
+  const ck=document.getElementById(`check_${id}`); if(ck) ck.classList.remove('show');
+  clearTimeout(acTimers[id]);
+  if(val.length<2){closeDropdown(id);return;}
+  acTimers[id]=setTimeout(()=>searchCity(val,id,idx),400);
+}
+
+async function searchCity(query,id,idx){
+  const spin=document.getElementById(`spin_${id}`);
+  if(spin) spin.classList.add('show');
+  try{
+    const key=query.toLowerCase();
+    let results=acCache[key];
+    if(!results){
+      const url=`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query+' Brasil')}&format=json&limit=6&addressdetails=1&countrycodes=br`;
+      const res=await fetch(url,{headers:{'Accept-Language':'pt-BR','User-Agent':'CalcFrete/1.0'}});
+      results=await res.json();
+      acCache[key]=results;
+    }
+    const filtered=results.filter(r=>['city','town','village','municipality','administrative','place'].includes(r.type)||r.class==='place'||r.class==='boundary').slice(0,5);
+    renderDropdown(filtered,id,idx);
+  }catch(e){closeDropdown(id);}
+  if(spin) spin.classList.remove('show');
+}
+
+function renderDropdown(results,id,idx){
+  const drop=document.getElementById(`drop_${id}`);
+  if(!drop)return;
+  if(!results.length){drop.innerHTML='<div class="ac-empty">Nenhuma cidade encontrada</div>';drop.classList.add('show');return;}
+  drop._results=results;
+  drop.innerHTML=results.map((r,i)=>{
+    const parts=r.display_name.split(',');
+    const main=parts[0].trim(), sub=parts.slice(1,3).map(s=>s.trim()).join(', ');
+    return `<div class="ac-item" onmousedown="event.preventDefault()" onclick="selectCity('${id}',${idx},${i})">
+      <div class="ac-item-main">📍 ${main}</div>
+      <div class="ac-item-sub">${sub}</div>
+    </div>`;
+  }).join('');
+  drop.classList.add('show');
+}
+
+function selectCity(id,idx,ri){
+  const drop=document.getElementById(`drop_${id}`);
+  const r=drop._results[ri];
+  const parts=r.display_name.split(',');
+  const city=parts[0].trim();
+  const state=parts.find(p=>p.trim().length===2)||(parts[1]||'').trim();
+  const label=state?`${city}, ${state.trim()}`:city;
+  const inp=document.getElementById(`inp_${id}`);
+  if(inp) inp.value=label;
+  stops[idx].value=label;
+  stops[idx].coords={lat:parseFloat(r.lat),lon:parseFloat(r.lon)};
+  const ck=document.getElementById(`check_${id}`); if(ck){ck.textContent='✓';ck.classList.add('show');}
+  closeDropdown(id);
+}
+
+function closeDropdown(id){const d=document.getElementById(`drop_${id}`);if(d)d.classList.remove('show');}
+function onACBlur(id){setTimeout(()=>closeDropdown(id),150);}
+function onACKey(e,id){
+  const drop=document.getElementById(`drop_${id}`);
+  if(!drop||!drop.classList.contains('show'))return;
+  const items=drop.querySelectorAll('.ac-item');
+  let active=drop.querySelector('.ac-item.active');
+  if(e.key==='ArrowDown'){e.preventDefault();if(!active){items[0]?.classList.add('active');}else{active.classList.remove('active');(active.nextElementSibling||items[0]).classList.add('active');}}
+  else if(e.key==='ArrowUp'){e.preventDefault();if(!active){items[items.length-1]?.classList.add('active');}else{active.classList.remove('active');(active.previousElementSibling||items[items.length-1]).classList.add('active');}}
+  else if(e.key==='Enter'){e.preventDefault();if(active)active.click();}
+  else if(e.key==='Escape'){closeDropdown(id);}
+}
+
+// ── HELPERS ──────────────────────────────────────────────
+function showError(m){const e=document.getElementById('errorMsg');e.textContent=m;e.classList.add('show');}
+function hideError(){document.getElementById('errorMsg').classList.remove('show');}
+function fmt(v){return v.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});}
 function setLoading(on){
-  const b = document.getElementById('btnBuscarRotas');
-  b.disabled = on;
-  b.innerHTML = on ? '<span class="loading-dots"><span></span><span></span><span></span></span> BUSCANDO...' : 'BUSCAR ROTAS';
+  const b=document.getElementById('btnBuscarRotas');
+  b.disabled=on;
+  b.innerHTML=on?'<span class="loading-dots"><span></span><span></span><span></span></span> BUSCANDO...':'BUSCAR ROTAS';
 }
 
-// ── GEOCODING via Nominatim (OpenStreetMap) ─────────────
-async function geocode(city){
-  const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(city + ', Brasil')}&format=json&limit=1`;
-  const res = await fetch(url, { headers:{ 'Accept-Language':'pt-BR', 'User-Agent':'CalcFrete/1.0' } });
-  const data = await res.json();
+async function geocodeFallback(city){
+  const url=`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(city+' Brasil')}&format=json&limit=1&countrycodes=br`;
+  const res=await fetch(url,{headers:{'Accept-Language':'pt-BR','User-Agent':'CalcFrete/1.0'}});
+  const data=await res.json();
   if(!data.length) throw new Error(`Cidade não encontrada: "${city}"`);
-  return { lat: parseFloat(data[0].lat), lon: parseFloat(data[0].lon), name: data[0].display_name.split(',').slice(0,2).join(',') };
+  return {lat:parseFloat(data[0].lat),lon:parseFloat(data[0].lon)};
 }
 
-// ── DISTÂNCIA via OSRM ──────────────────────────────────
-async function getOSRMDistance(coords){
-  // coords = [{lat,lon}, ...]
-  const waypoints = coords.map(c => `${c.lon},${c.lat}`).join(';');
-  const url = `https://router.project-osrm.org/route/v1/driving/${waypoints}?overview=false&alternatives=true`;
-  const res = await fetch(url);
-  const data = await res.json();
-  if(data.code !== 'Ok' || !data.routes.length) throw new Error('Não foi possível calcular a rota.');
-  return data.routes.map((r, i) => ({
-    km: Math.round(r.distance / 1000),
-    duration: Math.round(r.duration / 60), // minutos
-    index: i
-  }));
+// ── OSRM com geometria ───────────────────────────────────
+async function getOSRMRoutes(coords){
+  const waypoints=coords.map(c=>`${c.lon},${c.lat}`).join(';');
+  const params='overview=full&geometries=geojson&alternatives=true';
+  const servers=[
+    `https://routing.openstreetmap.de/routed-car/route/v1/driving/${waypoints}?${params}`,
+    `https://router.project-osrm.org/route/v1/driving/${waypoints}?${params}`
+  ];
+  let lastErr='Não foi possível calcular a rota.';
+  for(const url of servers){
+    try{
+      const res=await fetch(url,{mode:'cors'});
+      const data=await res.json();
+      if(data.code==='Ok'&&data.routes.length){
+        return data.routes.map(r=>({
+          km:Math.round(r.distance/1000),
+          duration:Math.round(r.duration/60),
+          geometry:r.geometry
+        }));
+      }
+    }catch(e){ lastErr=e.message||lastErr; }
+  }
+  throw new Error(lastErr);
 }
 
-// ── BUSCAR ROTAS ────────────────────────────────────────
+// ── BUSCAR ROTAS ─────────────────────────────────────────
 async function buscarRotas(){
   hideError();
-  selectedRouteKm = null; selectedRouteName = null;
+  selectedRouteKm=null; selectedRouteName=null; selectedRouteGeom=null;
+  routeGeometries=[];
   document.getElementById('results').classList.remove('show');
   document.getElementById('routesSection').classList.remove('show');
+  document.getElementById('mapCard').classList.remove('show');
   document.getElementById('btnUsarRota').classList.remove('show');
-  syncVals();
 
-  if(!stops[0].value || !stops[stops.length-1].value) return showError('Preencha ao menos a origem e o destino.');
-  if(stops.some(s => s.type==='parada' && !s.value)) return showError('Preencha todas as paradas ou remova as vazias.');
+  stops.forEach(s=>{const el=document.getElementById(`inp_${s.id}`);if(el)s.value=el.value.trim();});
+  if(!stops[0].value||!stops[stops.length-1].value) return showError('Preencha ao menos a origem e o destino.');
+  if(stops.some(s=>s.type==='parada'&&!s.value)) return showError('Preencha todas as paradas ou remova as vazias.');
 
   setLoading(true);
-
   try{
-    // Geocodifica todas as cidades
-    const geocoded = [];
-    for(const stop of stops){
-      const g = await geocode(stop.value);
-      geocoded.push(g);
-      await new Promise(r => setTimeout(r, 300)); // respeita rate limit Nominatim
+    for(let i=0;i<stops.length;i++){
+      if(!stops[i].coords){
+        stops[i].coords=await geocodeFallback(stops[i].value);
+        await new Promise(r=>setTimeout(r,300));
+      }
     }
-
-    // Pega rotas do OSRM
-    const routes = await getOSRMDistance(geocoded);
-
-    // Monta opções de exibição
-    const nomes = ['Rota Principal', 'Rota Alternativa 1', 'Rota Alternativa 2'];
-    const rotasExibir = routes.slice(0, 3).map((r, i) => ({
-      nome: nomes[i] || `Rota ${i+1}`,
-      km: r.km,
-      duration: r.duration,
-      via: geocoded.map(g => g.name).join(' → ')
+    const coords=stops.map(s=>s.coords);
+    const routes=await getOSRMRoutes(coords);
+    routeGeometries=routes.map(r=>r.geometry);
+    const nomes=['Rota Principal','Rota Alternativa 1','Rota Alternativa 2'];
+    const viaText=stops.map(s=>s.value).join(' → ');
+    const rotasExibir=routes.slice(0,3).map((r,i)=>({
+      nome:nomes[i]||`Rota ${i+1}`,km:r.km,duration:r.duration,via:viaText
     }));
-
     renderRouteOptions(rotasExibir);
-
-  } catch(e){
-    showError(e.message || 'Erro ao buscar rotas. Verifique os nomes das cidades.');
+  }catch(e){
+    showError(e.message||'Erro ao buscar rotas. Verifique os nomes das cidades.');
   }
-
   setLoading(false);
 }
 
-// ── RENDERIZA OPÇÕES ────────────────────────────────────
+// ── RENDERIZA OPÇÕES ─────────────────────────────────────
 function renderRouteOptions(rotas){
-  const list = document.getElementById('routesList');
-  list.innerHTML = '';
-
-  rotas.forEach(r => {
-    const horas = Math.floor(r.duration / 60);
-    const mins  = r.duration % 60;
-    const tempo = horas > 0 ? `${horas}h${mins > 0 ? mins+'min' : ''}` : `${mins}min`;
-
-    const div = document.createElement('div');
-    div.className = 'route-option';
-    div.innerHTML = `
+  const list=document.getElementById('routesList');
+  list.innerHTML='';
+  rotas.forEach((r,idx)=>{
+    const horas=Math.floor(r.duration/60), mins=r.duration%60;
+    const tempo=horas>0?`${horas}h${mins>0?mins+'min':''}`:`${mins}min`;
+    const div=document.createElement('div');
+    div.className='route-option';
+    div.innerHTML=`
       <div class="route-radio"><div class="route-radio-dot"></div></div>
       <div class="route-info">
         <div class="route-name">${r.nome}</div>
-        <div class="route-via">⏱ ${tempo} estimado · ${r.via}</div>
+        <div class="route-via">⏱ ${tempo} estimado</div>
       </div>
-      <div style="text-align:right;flex-shrink:0">
-        <div class="route-km-badge real">${r.km.toLocaleString('pt-BR')} <small>km</small></div>
+      <div class="route-right">
+        <div class="route-km-badge">${r.km.toLocaleString('pt-BR')} <small>km</small></div>
         <div class="km-source">🛰 OSM Real</div>
       </div>`;
-
-    div.addEventListener('click', () => {
-      document.querySelectorAll('.route-option').forEach(o => o.classList.remove('selected'));
+    div.addEventListener('click',()=>{
+      document.querySelectorAll('.route-option').forEach(o=>o.classList.remove('selected'));
       div.classList.add('selected');
-      selectedRouteKm = r.km;
-      selectedRouteName = r.nome;
+      selectedRouteKm=r.km; selectedRouteName=r.nome;
+      selectedRouteGeom=routeGeometries[idx]||null;
       document.getElementById('btnUsarRota').classList.add('show');
+      // Preview no mapa ao selecionar
+      showMapPreview(idx);
     });
-
     list.appendChild(div);
   });
-
   document.getElementById('routesSection').classList.add('show');
-  document.getElementById('routesSection').scrollIntoView({ behavior:'smooth', block:'nearest' });
+  document.getElementById('routesSection').scrollIntoView({behavior:'smooth',block:'nearest'});
 }
 
-// ── CALCULAR ────────────────────────────────────────────
+// ── MAPA ─────────────────────────────────────────────────
+function initMap(){
+  if(map) return;
+  map=L.map('map',{zoomControl:true,attributionControl:true});
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
+    attribution:'© <a href="https://openstreetmap.org">OpenStreetMap</a>',
+    maxZoom:19
+  }).addTo(map);
+}
+
+const routeColors=['#f5a623','#3498db','#9b59b6'];
+
+function showMapPreview(routeIdx){
+  document.getElementById('mapCard').classList.add('show');
+  setTimeout(()=>{
+    initMap();
+    if(routeLayer){map.removeLayer(routeLayer);routeLayer=null;}
+
+    const geom=routeGeometries[routeIdx];
+    if(geom){
+      routeLayer=L.geoJSON(geom,{
+        style:{color:routeColors[routeIdx]||'#f5a623',weight:5,opacity:.85}
+      }).addTo(map);
+      map.fitBounds(routeLayer.getBounds(),{padding:[30,30]});
+    }
+
+    // Marcadores
+    stops.forEach((s,i)=>{
+      if(!s.coords)return;
+      const isFirst=i===0, isLast=i===stops.length-1;
+      const color=isFirst?'#f5a623':isLast?'#e8630a':'#3498db';
+      const icon=L.divIcon({
+        className:'',
+        html:`<div style="width:14px;height:14px;border-radius:50%;background:${color};border:3px solid white;box-shadow:0 2px 6px rgba(0,0,0,.4)"></div>`,
+        iconSize:[14,14],iconAnchor:[7,7]
+      });
+      L.marker([s.coords.lat,s.coords.lon],{icon})
+        .bindTooltip(s.value,{permanent:false,direction:'top'})
+        .addTo(map);
+    });
+
+    map.invalidateSize();
+    document.getElementById('mapCard').scrollIntoView({behavior:'smooth',block:'nearest'});
+  },100);
+}
+
+// ── CALCULAR ─────────────────────────────────────────────
 function calcularComRota(){
   hideError();
-  const vf = parseFloat(document.getElementById('valorFrete').value);
-  const pe = parseFloat(document.getElementById('peso').value);
-  const pg = parseFloat(document.getElementById('pedagio').value) || 0;
+  const vf=parseFloat(document.getElementById('valorFrete').value);
+  const pe=parseFloat(document.getElementById('peso').value);
+  const pg=parseFloat(document.getElementById('pedagio').value)||0;
+  if(isNaN(vf)||vf<=0) return showError('Informe um valor de frete válido.');
+  if(isNaN(pe)||pe<=0) return showError('Informe um peso válido em toneladas.');
+  if(!selectedRouteKm)  return showError('Selecione uma rota primeiro.');
 
-  if(isNaN(vf) || vf <= 0) return showError('Informe um valor de frete válido.');
-  if(isNaN(pe) || pe <= 0) return showError('Informe um peso válido em toneladas.');
-  if(!selectedRouteKm)     return showError('Selecione uma rota primeiro.');
-
-  const total   = vf * pe;
-  const liquido = total - pg;
-  const kmBruto = total / selectedRouteKm;
-  const kmLiq   = liquido / selectedRouteKm;
-
-  syncVals();
-  const badge = stops.map(s => `<strong>${s.value}</strong>`).join('<span class="stop-arrow">→</span>');
-  document.getElementById('routeBadge').innerHTML = `📍 ${badge}<br><small style="color:var(--muted);font-size:11px;">${selectedRouteName} · ${selectedRouteKm.toLocaleString('pt-BR')} km (OpenStreetMap)</small>`;
-
-  document.getElementById('r_km').textContent       = selectedRouteKm.toLocaleString('pt-BR');
-  document.getElementById('r_total').textContent    = 'R$ ' + fmt(total);
-  document.getElementById('r_pedagio').textContent  = 'R$ ' + fmt(pg);
-  document.getElementById('r_liquido').textContent  = 'R$ ' + fmt(liquido);
-  document.getElementById('r_porKmBruto').textContent = 'R$ ' + fmt(kmBruto);
-  document.getElementById('r_porKm').textContent    = 'R$ ' + fmt(kmLiq);
-
+  const total=vf*pe, liquido=total-pg;
+  const badge=stops.map(s=>`<strong>${s.value}</strong>`).join('<span class="stop-arrow">→</span>');
+  document.getElementById('routeBadge').innerHTML=`📍 ${badge}<br><small style="color:var(--muted);font-size:11px;">${selectedRouteName} · ${selectedRouteKm.toLocaleString('pt-BR')} km</small>`;
+  document.getElementById('r_km').textContent=selectedRouteKm.toLocaleString('pt-BR');
+  document.getElementById('r_total').textContent='R$ '+fmt(total);
+  document.getElementById('r_pedagio').textContent='R$ '+fmt(pg);
+  document.getElementById('r_liquido').textContent='R$ '+fmt(liquido);
+  document.getElementById('r_porKmBruto').textContent='R$ '+fmt(total/selectedRouteKm);
+  document.getElementById('r_porKm').textContent='R$ '+fmt(liquido/selectedRouteKm);
   document.getElementById('results').classList.add('show');
-  document.getElementById('results').scrollIntoView({ behavior:'smooth', block:'nearest' });
+  document.getElementById('results').scrollIntoView({behavior:'smooth',block:'nearest'});
 }
 
-// ── INIT ────────────────────────────────────────────────
 renderRoute();
 </script>
 </body>
