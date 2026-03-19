@@ -136,6 +136,24 @@
   .loading-dots span:nth-child(2){animation-delay:.15s;}
   .loading-dots span:nth-child(3){animation-delay:.3s;}
   @keyframes bounce{0%,100%{transform:translateY(0);opacity:.6}50%{transform:translateY(-4px);opacity:1}}
+
+  /* ANTT */
+  select{background:var(--surface2);border:1.5px solid var(--border);border-radius:10px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:14px;height:48px;padding:0 14px;outline:none;width:100%;cursor:pointer;appearance:none;-webkit-appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%236b7590' d='M1 1l5 5 5-5'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 14px center;}
+  select:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(245,166,35,.12);}
+  select option{background:var(--surface2);}
+  .antt-result{border-radius:12px;padding:16px 18px;margin-bottom:14px;display:flex;align-items:center;gap:14px;}
+  .antt-result.acima{background:rgba(46,204,113,.08);border:1.5px solid rgba(46,204,113,.35);}
+  .antt-result.dentro{background:rgba(245,166,35,.08);border:1.5px solid rgba(245,166,35,.35);}
+  .antt-result.abaixo{background:rgba(231,76,60,.1);border:1.5px solid rgba(231,76,60,.4);}
+  .antt-icon{font-size:28px;flex-shrink:0;}
+  .antt-info{flex:1;}
+  .antt-status{font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:1px;margin-bottom:2px;}
+  .antt-status.acima{color:#2ecc71;}
+  .antt-status.dentro{color:var(--accent);}
+  .antt-status.abaixo{color:#e74c3c;}
+  .antt-detail{font-size:12px;color:var(--muted);line-height:1.5;}
+  .antt-piso{font-family:'Bebas Neue',sans-serif;font-size:24px;text-align:right;flex-shrink:0;white-space:nowrap;}
+  .antt-piso small{font-family:'DM Sans',sans-serif;font-size:10px;color:var(--muted);font-weight:400;display:block;letter-spacing:1px;text-transform:uppercase;}
   @media(max-width:540px){.values-row-3{grid-template-columns:1fr;}.results-grid-top,.results-grid-bot{grid-template-columns:1fr;}.btn-add-stop{margin-left:0;width:100%;}}
 </style>
 </head>
@@ -184,6 +202,45 @@
     </div>
   </div>
 
+
+  <!-- ANTT -->
+  <div class="card">
+    <div class="card-title">📋 Comparação ANTT (Tabela A — Res. 6.076/2026)</div>
+    <div class="values-row-3">
+      <div class="field">
+        <label>Tipo de Carga</label>
+        <select id="tipoCarga">
+          <option value="geral">Carga Geral</option>
+          <option value="granel_solido">Granel Sólido</option>
+          <option value="granel_liquido">Granel Líquido</option>
+          <option value="frigorificada">Frigorificada</option>
+          <option value="perigosa">Perigosa</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Nº de Eixos do Veículo</label>
+        <select id="numEixos">
+          <option value="2">2 eixos</option>
+          <option value="3">3 eixos</option>
+          <option value="4">4 eixos</option>
+          <option value="5" selected>5 eixos</option>
+          <option value="6">6 eixos</option>
+          <option value="7">7 eixos</option>
+          <option value="8">8 eixos</option>
+          <option value="9">9 eixos</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Piso Mínimo Calculado</label>
+        <div class="input-group">
+          <input type="number" id="pisoAntt" placeholder="–" readonly style="background:rgba(245,166,35,.05);border-color:rgba(245,166,35,.3);cursor:default;color:var(--accent);font-weight:600;"/>
+          <span class="input-unit">R$</span>
+        </div>
+      </div>
+    </div>
+    <div style="font-size:11px;color:var(--muted);margin-top:10px;">ℹ️ Piso calculado automaticamente conforme Tabela A · Portaria SUROC nº 03/2026. Pedágios não incluídos no piso ANTT.</div>
+  </div>
+
   <button class="btn-calcular" id="btnBuscarRotas" onclick="buscarRotas()">BUSCAR ROTAS</button>
   <div class="error-msg" id="errorMsg"></div>
 
@@ -205,6 +262,14 @@
   <div class="results card" id="results" style="margin-top:14px;">
     <div class="card-title">📊 Resultado</div>
     <div class="route-badge" id="routeBadge"></div>
+    <div class="antt-result" id="anttResult" style="display:none">
+      <div class="antt-icon" id="anttIcon">–</div>
+      <div class="antt-info">
+        <div class="antt-status" id="anttStatus">–</div>
+        <div class="antt-detail" id="anttDetail">–</div>
+      </div>
+      <div class="antt-piso" id="anttPisoDisplay" style="color:var(--muted)">–<small>Piso ANTT</small></div>
+    </div>
     <div class="results-grid-top">
       <div class="result-card success">
         <div class="result-label">Distância Real</div>
@@ -474,10 +539,12 @@ function renderRouteOptions(rotas){
       document.querySelectorAll('.route-option').forEach(o=>o.classList.remove('selected'));
       div.classList.add('selected');
       selectedRouteKm=r.km; selectedRouteName=r.nome;
+      atualizarPisoDisplay();
       selectedRouteGeom=routeGeometries[idx]||null;
       document.getElementById('btnUsarRota').classList.add('show');
-      // Preview no mapa ao selecionar
       showMapPreview(idx);
+      // Scroll para o botão ficar visível
+      setTimeout(()=>{ document.getElementById('btnUsarRota').scrollIntoView({behavior:'smooth',block:'center'}); }, 150);
     });
     list.appendChild(div);
   });
@@ -527,7 +594,6 @@ function showMapPreview(routeIdx){
     });
 
     map.invalidateSize();
-    document.getElementById('mapCard').scrollIntoView({behavior:'smooth',block:'nearest'});
   },100);
 }
 
@@ -550,6 +616,34 @@ function calcularComRota(){
   document.getElementById('r_liquido').textContent='R$ '+fmt(liquido);
   document.getElementById('r_porKmBruto').textContent='R$ '+fmt(total/selectedRouteKm);
   document.getElementById('r_porKm').textContent='R$ '+fmt(liquido/selectedRouteKm);
+  // ANTT comparison
+  const piso = calcPisoANTT(selectedRouteKm);
+  const anttEl = document.getElementById('anttResult');
+  if(piso){
+    document.getElementById('pisoAntt').value = piso.toFixed(2);
+    document.getElementById('anttPisoDisplay').innerHTML = 'R$ '+fmt(piso)+'<small>Piso ANTT</small>';
+    const diff = ((liquido - piso) / piso) * 100;
+    let cls, icon, status, detail;
+    if(liquido >= piso * 1.05){
+      cls='acima'; icon='✅'; status='ACIMA DO PISO ANTT';
+      detail=`Seu frete líquido está ${diff.toFixed(1)}% acima do mínimo obrigatório. R$ ${fmt(liquido-piso)} a mais que o piso.`;
+    } else if(liquido >= piso){
+      cls='dentro'; icon='⚠️'; status='NO LIMITE DO PISO ANTT';
+      detail=`Seu frete está ${diff.toFixed(1)}% acima do mínimo. Margem pequena — atenção para não cair abaixo com custos extras.`;
+    } else {
+      cls='abaixo'; icon='🚨'; status='ABAIXO DO PISO MÍNIMO!';
+      detail=`Seu frete está R$ ${fmt(piso-liquido)} abaixo do mínimo obrigatório (${Math.abs(diff).toFixed(1)}%). Risco de multa de R$ 550,00 pela ANTT.`;
+    }
+    anttEl.className='antt-result '+cls;
+    document.getElementById('anttIcon').textContent=icon;
+    document.getElementById('anttStatus').className='antt-status '+cls;
+    document.getElementById('anttStatus').textContent=status;
+    document.getElementById('anttDetail').textContent=detail;
+    anttEl.style.display='flex';
+  } else {
+    anttEl.style.display='none';
+  }
+
   document.getElementById('results').classList.add('show');
   document.getElementById('results').scrollIntoView({behavior:'smooth',block:'nearest'});
 }
