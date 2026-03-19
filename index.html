@@ -320,6 +320,30 @@ const stops = [
 // guarda geometrias das rotas retornadas
 let routeGeometries = [];
 
+
+// ── TABELA A ANTT (Resolução 6.076/2026 + Portaria SUROC 03/2026) ──────────
+const ANTT_TABELA_A = {
+  geral:          { 2:{ccd:3.6735,cc:417.95}, 3:{ccd:4.5287,cc:483.42}, 4:{ccd:5.1876,cc:538.70}, 5:{ccd:5.9860,cc:478.76}, 6:{ccd:6.6214,cc:526.05}, 7:{ccd:7.2831,cc:611.81}, 8:{ccd:7.9448,cc:697.57}, 9:{ccd:8.6065,cc:783.33} },
+  granel_solido:  { 2:{ccd:3.4254,cc:397.28}, 3:{ccd:4.2197,cc:458.95}, 4:{ccd:4.8312,cc:511.34}, 5:{ccd:4.3821,cc:397.28}, 6:{ccd:6.1597,cc:497.49}, 7:{ccd:6.7815,cc:579.08}, 8:{ccd:7.4034,cc:660.67}, 9:{ccd:8.0252,cc:742.26} },
+  granel_liquido: { 2:{ccd:3.7891,cc:430.42}, 3:{ccd:4.6686,cc:497.68}, 4:{ccd:5.3471,cc:554.65}, 5:{ccd:6.1693,cc:493.01}, 6:{ccd:6.8218,cc:541.73}, 7:{ccd:7.5040,cc:630.17}, 8:{ccd:8.1863,cc:718.61}, 9:{ccd:8.8685,cc:807.05} },
+  frigorificada:  { 2:{ccd:4.1823,cc:467.32}, 3:{ccd:5.1534,cc:540.38}, 4:{ccd:5.9011,cc:602.14}, 5:{ccd:6.8097,cc:537.25}, 6:{ccd:7.5327,cc:590.10}, 7:{ccd:8.2860,cc:686.91}, 8:{ccd:9.0394,cc:783.72}, 9:{ccd:9.7927,cc:880.53} },
+  perigosa:       { 2:{ccd:4.5231,cc:503.18}, 3:{ccd:5.5745,cc:581.89}, 4:{ccd:6.3828,cc:648.42}, 5:{ccd:7.3671,cc:580.32}, 6:{ccd:8.1499,cc:637.82}, 7:{ccd:8.9649,cc:742.58}, 8:{ccd:9.7799,cc:847.34}, 9:{ccd:10.5949,cc:952.10} }
+};
+
+function calcPisoANTT(km){
+  const tipo = document.getElementById('tipoCarga').value;
+  const eixos = parseInt(document.getElementById('numEixos').value);
+  if(!km || !ANTT_TABELA_A[tipo] || !ANTT_TABELA_A[tipo][eixos]) return null;
+  const {ccd, cc} = ANTT_TABELA_A[tipo][eixos];
+  return (km * ccd) + cc;
+}
+
+function atualizarPisoDisplay(){
+  const piso = calcPisoANTT(selectedRouteKm);
+  const el = document.getElementById('pisoAntt');
+  if(el) el.value = piso ? piso.toFixed(2) : '';
+}
+
 // ── ROTA BUILDER ─────────────────────────────────────────
 function renderRoute(){
   const b = document.getElementById('routeBuilder');
